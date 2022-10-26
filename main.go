@@ -39,9 +39,6 @@ func main() {
 			},
 			Action: func(context *cli.Context) error {
 				count := context.Int(flagCount)
-				if count < 1 {
-					count = DEFAULT_COUNT
-				}
 				cmd := exec.Command("git", "branch", "--sort=committerdate")
 				var out bytes.Buffer
 				cmd.Stdout = &out
@@ -50,8 +47,17 @@ func main() {
 					return errors.WithStack(err)
 				}
 
-				branches := strings.Split(out.String(), "\n")
-				branches = branches[len(branches)-count : len(branches)-1]
+				var branches []string
+				for _, b := range strings.Split(out.String(), "\n") {
+					if b != "" {
+						branches = append(branches, b)
+					}
+				}
+
+				if count < 1 || count > len(branches) {
+					return errors.New(fmt.Sprintf("count must be between 1 and %d", len(branches)))
+				}
+				branches = branches[len(branches) - count:]
 
 				prompt := &survey.Select{
 					Message: "Pick branch to checkout",
@@ -63,7 +69,16 @@ func main() {
 					return errors.WithStack(err)
 				}
 
-				fmt.Printf("selected branch %s", branch)
+				// Sanitise branch names from special characters
+				branch = strings.Trim(branch, "*+ ")
+
+				cmd = exec.Command("git", "checkout", branch)
+				cmd.Stdout = os.Stdout
+				cmd.Stderr = os.Stderr
+				err = cmd.Run()
+				if err != nil {
+					return errors.WithStack(err)
+				}
 
 				return nil
 			},
