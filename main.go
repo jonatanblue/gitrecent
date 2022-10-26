@@ -9,6 +9,7 @@ import (
 	"math/rand"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -38,11 +39,12 @@ func main() {
 				},
 			},
 			Action: func(context *cli.Context) error {
-				count := context.Int(flagCount)
+				var err error
+
 				cmd := exec.Command("git", "branch", "--sort=committerdate")
 				var out bytes.Buffer
 				cmd.Stdout = &out
-				err := cmd.Run()
+				err = cmd.Run()
 				if err != nil {
 					return errors.WithStack(err)
 				}
@@ -54,10 +56,25 @@ func main() {
 					}
 				}
 
+				count := DEFAULT_COUNT
+				// Adjust default down if less than number of branches
+				if count > len(branches) {
+					count = len(branches)
+				}
+
+				// Override default if user has set the count flag
+				s := context.String(flagCount)
+				if s != "" {
+					count, err = strconv.Atoi(s)
+					if err != nil {
+						return errors.WithStack(err)
+					}
+				}
+
 				if count < 1 || count > len(branches) {
 					return errors.New(fmt.Sprintf("count must be between 1 and %d", len(branches)))
 				}
-				branches = branches[len(branches) - count:]
+				branches = branches[len(branches)-count:]
 
 				prompt := &survey.Select{
 					Message: "Pick branch to checkout",
