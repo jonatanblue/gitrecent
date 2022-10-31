@@ -76,6 +76,11 @@ func main() {
 				}
 				branches = branches[len(branches)-count:]
 
+				// Reverse order to get most recent branch on top
+				for i, j := 0, len(branches)-1; i < j; i, j = i+1, j-1 {
+					branches[i], branches[j] = branches[j], branches[i]
+				}
+
 				prompt := &survey.Select{
 					Message: "Pick branch to checkout",
 					Options: branches,
